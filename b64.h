@@ -8,6 +8,14 @@
 #ifndef B64_H
 #define B64_H 1
 
+/** 
+ * Use custom header with more complicated definitions of
+ * custom functions of memory allocations.
+ */
+#ifdef B64_USE_CUSTOM_ALLOC_HEADER
+#include "b64_custom_alloc.h"
+#endif 
+
 /**
  *  Memory allocation functions to use. You can define b64_malloc and
  * b64_realloc to custom functions if you want.
@@ -40,7 +48,7 @@ extern "C" {
 #endif
 
 /**
- * Encode `unsigned char *' source with `size_t' size.
+ * Encode `const unsigned char *' source with `size_t' size.
  * Returns a `char *' base64 encoded string.
  */
 
@@ -48,14 +56,25 @@ char *
 b64_encode (const unsigned char *, size_t);
 
 /**
- * Dencode `char *' source with `size_t' size.
+ * Encode 'const unsigned char *' source with 'size_t' size
+ * into provided buffer and terminate with /0.
+ * Returns NULL if out buffer is too small to fit datai.
+ * 'size_t *' will contain size of data without
+ * terminating \0
+ */
+
+char *
+b64_encode_static (const unsigned char *, size_t, unsigned char *, size_t *);
+
+/**
+ * Decode `char *' source with `size_t' size.
  * Returns a `unsigned char *' base64 decoded string.
  */
 unsigned char *
 b64_decode (const char *, size_t);
 
 /**
- * Dencode `char *' source with `size_t' size.
+ * Decode `char *' source with `size_t' size.
  * Returns a `unsigned char *' base64 decoded string + size of decoded string.
  */
 unsigned char *

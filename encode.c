@@ -17,8 +17,8 @@ extern void* b64_malloc(size_t);
 extern void* b64_realloc(void*, size_t);
 #endif
 
-char *
-b64_encode (const unsigned char *src, size_t len) {
+static char *
+encode (const unsigned char *src, size_t len, char *obuf, size_t *obuf_size) {
   int i = 0;
   int j = 0;
   char *enc = NULL;
@@ -26,9 +26,21 @@ b64_encode (const unsigned char *src, size_t len) {
   unsigned char buf[4];
   unsigned char tmp[3];
 
-  // alloc
-  enc = (char *) b64_malloc(1);
-  if (NULL == enc) { return NULL; }
+  if (NULL == obuf){
+    // alloc
+    enc = (char *) b64_malloc(1);
+    if (NULL == enc) { return NULL; }
+  } else {
+    if (NULL != obuf_size){
+      if (*obuf_size < 4 * ((len + 2) / 3) + 1){
+        return NULL;
+      } else {
+        enc = obuf;
+      } 
+    } else {
+      return NULL;
+    }
+  }
 
   // parse until end of source
   while (len--) {
@@ -42,11 +54,16 @@ b64_encode (const unsigned char *src, size_t len) {
       buf[2] = ((tmp[1] & 0x0f) << 2) + ((tmp[2] & 0xc0) >> 6);
       buf[3] = tmp[2] & 0x3f;
 
-      // allocate 4 new byts for `enc` and
+      if (NULL == obuf){
+        // if we are working on dynamic buffer
+        // allocate 4 new byts for `enc` and
+        enc = (char *) b64_realloc(enc, size + 4);
+        if (NULL == enc) { return NULL; }
+      }
+
       // then translate each encoded buffer
       // part by index from the base 64 index table
       // into `enc' unsigned char array
-      enc = (char *) b64_realloc(enc, size + 4);
       for (i = 0; i < 4; ++i) {
         enc[size++] = b64_table[buf[i]];
       }
@@ -71,21 +88,43 @@ b64_encode (const unsigned char *src, size_t len) {
 
     // perform same write to `enc` with new allocation
     for (j = 0; (j < i + 1); ++j) {
-      enc = (char *) b64_realloc(enc, size + 1);
+      if (NULL == obuf){
+        enc = (char *) b64_realloc(enc, size + 1);
+        if (NULL == enc) { return NULL; }
+      }
       enc[size++] = b64_table[buf[j]];
     }
 
     // while there is still a remainder
     // append `=' to `enc'
     while ((i++ < 3)) {
-      enc = (char *) b64_realloc(enc, size + 1);
+      if (NULL == obuf){
+        enc = (char *) b64_realloc(enc, size + 1);
+        if (NULL == enc) { return NULL; }
+      }
       enc[size++] = '=';
     }
   }
 
   // Make sure we have enough space to add '\0' character at end.
-  enc = (char *) b64_realloc(enc, size + 1);
+  if (NULL == obuf){
+    enc = (char *) b64_realloc(enc, size + 1);
+    if (NULL == enc) { return NULL; }
+  }
   enc[size] = '\0';
+  if (NULL != obuf_size){
+    *obuf_size = size;
+  }
 
   return enc;
+}
+
+char *
+b64_encode (const unsigned char *src, size_t len) {
+  return encode(src, len, NULL, NULL);
+}
+
+char *
+b64_encode_static (const unsigned char *src, size_t len, unsigned char *dst, size_t *size){
+  return encode(src, len, dst, size);
 }
